@@ -18,6 +18,7 @@ const FLOOR_THICKNESS: f32 = 10.0;
 
 const COLOR_BACKGROUND: Color = Color::rgb(0.13, 0.13, 0.23);
 const COLOR_FLOOR: Color = Color::rgb(0.45, 0.55, 0.66);
+const COLOR_WALL: Color = Color::rgb(1.0, 0.0, 0.0);
 
 fn main() {
     App::new()
@@ -36,6 +37,7 @@ fn main() {
         .add_plugin(PlatformsPlugin)
         .add_plugin(PlayerPlugin)
         .add_plugin(AnimationPlugin)
+        .add_system(bevy::window::close_on_esc)
         .add_startup_system(setup)
         .run();
 }
@@ -52,6 +54,38 @@ fn setup(mut commands: Commands) {
             transform: Transform {
                 translation: Vec3::new(0.0, WINDOW_BOTTOM_Y + (FLOOR_THICKNESS / 2.0), 0.0),
                 scale: Vec3::new(WINDOW_WIDTH, FLOOR_THICKNESS, 1.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(RigidBody::Fixed)
+        .insert(Collider::cuboid(0.5, 0.5));
+    // Left Wall
+    commands
+        .spawn(SpriteBundle {
+            sprite: Sprite {
+                color: COLOR_WALL,
+                ..Default::default()
+            },
+            transform: Transform {
+                translation: Vec3::new(-1.0 * (WINDOW_WIDTH / 2.0), 0.0, 0.0),
+                scale: Vec3::new(1.0, WINDOW_HEIGHT, 1.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(RigidBody::Fixed)
+        .insert(Collider::cuboid(0.5, 0.5));
+    // Right Wall
+    commands
+        .spawn(SpriteBundle {
+            sprite: Sprite {
+                color: COLOR_WALL,
+                ..Default::default()
+            },
+            transform: Transform {
+                translation: Vec3::new(WINDOW_WIDTH / 2.0, 0.0, 0.0),
+                scale: Vec3::new(1.0, WINDOW_HEIGHT, 1.0),
                 ..Default::default()
             },
             ..Default::default()
