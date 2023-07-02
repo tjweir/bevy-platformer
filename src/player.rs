@@ -19,7 +19,8 @@ const SPRITE_TILE_HEIGHT: f32 = 256.0;
 const SPRITE_RENDER_WIDTH: f32 = 64.0;
 const SPRITE_RENDER_HEIGHT: f32 = 128.0;
 
-const SPRITE_IDX_STAND: usize = 28;
+const SPRITE_IDX_STAND: usize = 49;
+const SPRITE_IDX_CROUCH: usize = 50;
 const SPRITE_IDX_WALKING: &[usize] = &[7, 0];
 const SPRITE_IDX_JUMP: usize = 35;
 
@@ -34,9 +35,11 @@ impl Plugin for PlayerPlugin {
             .add_system(jump)
             .add_system(rise)
             .add_system(fall)
+            //.add_system(crouch)
             .add_system(apply_movement_animation)
             .add_system(apply_idle_sprite)
             .add_system(apply_jump_sprite)
+            //.add_system(apply_crouch_sprite)
             .add_system(update_direction)
             .add_system(update_sprite_direction);
     }
@@ -46,6 +49,12 @@ impl Plugin for PlayerPlugin {
 enum Direction {
     Right,
     Left,
+}
+
+#[derive(Component)]
+enum State {
+    Idle,
+    Crouching,
 }
 
 fn setup(
@@ -105,6 +114,10 @@ fn movement(
         movement += time.delta_seconds() * PLAYER_VELOCITY_X * -1.0;
     }
 
+    if input.pressed(KeyCode::Down) {
+        println!("Crouching..")
+    }
+
     match player.translation {
         Some(vec) => player.translation = Some(Vec2::new(movement, vec.y)),
         None => player.translation = Some(Vec2::new(movement, 0.0)),
@@ -130,6 +143,26 @@ fn jump(
 
     if input.pressed(KeyCode::Up) && output.grounded {
         commands.entity(player).insert(Jump(0.0));
+    }
+}
+
+#[derive(Component)]
+struct Crouch(f32);
+
+fn crouch(
+    input: Res<Input<KeyCode>>,
+    mut commands: Commands,
+    query: Query<(Entity, &KinematicCharacterControllerOutput), Without<Animation>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (player, output) = query.single();
+
+    if input.pressed(KeyCode::Down) && output.grounded {
+    } else if input.any_just_released([KeyCode::Down]) && output.grounded {
+        commands.entity(player).insert(State::Idle);
     }
 }
 
@@ -165,7 +198,7 @@ fn fall(time: Res<Time>, mut query: Query<&mut KinematicCharacterController, Wit
     }
 
     let mut player = query.single_mut();
-    let movement = time.delta().as_secs_f32() * (PLAYER_VELOCITY_Y / 1.5) * -1.0;
+    let movement = time.delta().as_secs_f32() * (PLAYER_VELOCITY_Y / 1.2) * -1.0;
 
     match player.translation {
         Some(vec) => player.translation = Some(Vec2::new(vec.x, movement)),
@@ -197,6 +230,8 @@ fn apply_idle_sprite(
         &mut TextureAtlasSprite,
     )>,
 ) {
+    println!("Idling...");
+
     if query.is_empty() {
         return;
     }
@@ -205,6 +240,33 @@ fn apply_idle_sprite(
     if output.desired_translation.x == 0.0 && output.grounded {
         commands.entity(player).remove::<Animation>();
         sprite.index = SPRITE_IDX_STAND
+    }
+}
+
+fn apply_crouch_sprite(
+    mut commands: Commands,
+    mut query: Query<(
+        Entity,
+        &KinematicCharacterControllerOutput,
+        &mut TextureAtlasSprite,
+        &State,
+    )>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (player, output, mut sprite, state) = query.single_mut();
+
+    match state {
+        State::Idle => {
+            commands.entity(player).remove::<Animation>();
+            sprite.index = SPRITE_IDX_STAND;
+        }
+        State::Crouching => {
+            commands.entity(player).remove::<Animation>();
+            sprite.index = SPRITE_IDX_CROUCH;
+        }
     }
 }
 
